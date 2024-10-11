@@ -1,0 +1,12 @@
+# carts/permissions.py
+from rest_framework.permissions import BasePermission
+from rest_framework.exceptions import PermissionDenied
+from users.models import CUSTOMER
+
+class IsCustomerOrReadOnly(BasePermission):
+    message = 'You do not have permission to perform this action. Only customers are allowed.'
+
+    def has_permission(self, request, view):
+        if not (request.user.is_authenticated and request.user.user_type == CUSTOMER):
+            raise PermissionDenied(self.message)
+        return True
