@@ -2,12 +2,15 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
+from core.models import BaseTimeStamp
+
+
 def validate_rating(value):
     if not 1 <= value <= 5:
         raise ValidationError('Rating must be between 1 and 5.')
 
 # Create your models here.
-class ProductReview(models.Model):
+class ProductReview(BaseTimeStamp):
     product = models.ForeignKey('products.Product', on_delete=models.CASCADE,related_name='reviews')
     customer = models.ForeignKey('users.User', on_delete=models.SET_NULL,related_name='reviews' ,null=True)
     seller = models.ForeignKey('users.User', on_delete=models.SET_NULL, related_name='products_reviews', null=True)
@@ -15,9 +18,6 @@ class ProductReview(models.Model):
     review = models.TextField(blank=True)
     likes_count = models.PositiveIntegerField(default=0)
     is_verified = models.BooleanField(default=False)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
@@ -37,7 +37,7 @@ class ProductReview(models.Model):
         return review
 
 class CustomerReviewsLikes(models.Model):
-    review = models.ForeignKey(ProductReview, on_delete=models.CASCADE, related_name='likes')
+    review = models.ForeignKey('reviews.ProductReview', on_delete=models.CASCADE, related_name='likes')
     customer = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='likes')
 
     class Meta:

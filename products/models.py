@@ -1,12 +1,8 @@
 from django.db import models, transaction
+
+from core.models import BaseTimeStamp
 from users.models import User
 
-class BaseTimeStamp(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
 
 class Brand(BaseTimeStamp):
     name = models.CharField(max_length=50, unique=True )
@@ -39,9 +35,9 @@ class Product(BaseTimeStamp):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
-    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='products')
-    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
-    brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name='products')
+    seller = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='products')
+    category = models.ForeignKey('products.Category', on_delete=models.PROTECT, related_name='products')
+    brand = models.ForeignKey('products.Brand', on_delete=models.PROTECT, related_name='products')
 
     free_shipping = models.BooleanField(default=False)
     free_return = models.BooleanField(default=False)
@@ -59,16 +55,16 @@ class Product(BaseTimeStamp):
         return self.name
 
 class ProductVariant(BaseTimeStamp):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
-    size = models.ForeignKey(VariantSize, on_delete=models.PROTECT, blank=True, null=True,related_name='variants')
-    color = models.ForeignKey(VariantColor, on_delete=models.PROTECT, blank=True, null=True,related_name='variants')
+    product = models.ForeignKey('products.Product', on_delete=models.CASCADE, related_name='variants')
+    size = models.ForeignKey('products.VariantSize', on_delete=models.PROTECT, blank=True, null=True,related_name='variants')
+    color = models.ForeignKey('products.VariantColor', on_delete=models.PROTECT, blank=True, null=True,related_name='variants')
 
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.PositiveIntegerField(default=0)
 
 
 class VariantImage(BaseTimeStamp):
-    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='images')
+    variant = models.ForeignKey('products.ProductVariant', on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='product_images/')
     image_alt = models.CharField(max_length=255, blank=True)
     is_default = models.BooleanField(default=False)

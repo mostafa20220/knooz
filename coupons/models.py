@@ -1,7 +1,10 @@
 from django.db import models
 
+from core.models import BaseTimeStamp
+
+
 # Create your models here.
-class Coupon(models.Model):
+class Coupon(BaseTimeStamp):
     code = models.CharField(max_length=50)
     discount_percentage = models.FloatField()
     start_date = models.DateTimeField()
@@ -15,12 +18,9 @@ class Coupon(models.Model):
     max_discount_value = models.DecimalField(max_digits=10, decimal_places=2)
     max_use_per_user = models.IntegerField(default=1)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     def __str__(self):
         return self.code
 
 class CouponVariant(models.Model):
-    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE,related_name='variants')
+    coupon = models.ForeignKey('coupons.Coupon', on_delete=models.CASCADE,related_name='variants')
     productVariant = models.ForeignKey('products.ProductVariant', on_delete=models.CASCADE,related_name='coupons')

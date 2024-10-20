@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from phonenumber_field.modelfields import PhoneNumberField
 from django.utils.translation import gettext_lazy as _
 
+from core.models import BaseTimeStamp
+
 CUSTOMER = 'CUSTOMER'
 SELLER = 'SELLER'
 ADMIN = 'ADMIN'
@@ -81,16 +83,15 @@ class User(AbstractUser):
         return self.first_name + ' ' + self.last_name
 
 
-class CreditCard(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='credit_cards')
+class CreditCard(BaseTimeStamp):
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='credit_cards')
     card_number = models.CharField(max_length=16)
     card_holder_name = models.CharField(max_length=50)
     expiration_date = models.TextField(max_length=5) # 03/26
     is_default = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
 
 
-class ShippingAddress(models.Model):
+class ShippingAddress(BaseTimeStamp):
     user = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name='shipping_addresses')
 
     country = models.CharField(max_length=50)

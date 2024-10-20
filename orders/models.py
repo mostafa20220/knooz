@@ -1,5 +1,6 @@
 from django.db import models
 
+from core.models import BaseTimeStamp
 from products.models import ProductVariant
 from users.models import User
 
@@ -28,8 +29,8 @@ ORDER_STATUS_CHOICES = [
     (REFUNDED, 'Refunded')
 ]
 
-class Order(models.Model):
-    customer = models.ForeignKey(User, on_delete=models.CASCADE,related_name='orders')
+class Order(BaseTimeStamp):
+    customer = models.ForeignKey('users.User', on_delete=models.CASCADE,related_name='orders')
     shipping_address = models.TextField() # take a snapshot of the shipping address at the time of the order
     payment_method = models.CharField(choices=PAYMENT_METHOD_CHOICES, max_length=20, default=CASH_ON_DELIVERY)
     payment_details = models.TextField(blank=True, null=True) # store the payment details (last 4 digits, etc.)
@@ -43,17 +44,14 @@ class Order(models.Model):
     order_total = models.DecimalField(max_digits=10, decimal_places=2) # items_total_price + shipping_fee - discount_amount
     estimated_tax = models.DecimalField(max_digits=10, decimal_places=2, default=0) # 14% of order_total
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE,related_name='items')
+    order = models.ForeignKey('orders.Order', on_delete=models.CASCADE,related_name='items')
 
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
-    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ordered_products') # I am not sure
+    seller = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='ordered_products') # I am not sure
     category = models.CharField(max_length=50)
     brand = models.CharField(max_length=50)
     size = models.CharField(max_length=10, blank=True, null=True)

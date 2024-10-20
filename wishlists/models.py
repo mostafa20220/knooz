@@ -1,7 +1,10 @@
 from django.db import models
 
+from core.models import BaseTimeStamp
+
+
 # Create your models here.
-class WishlistItem(models.Model):
+class WishlistItem(BaseTimeStamp):
     customer = models.ForeignKey('users.User', on_delete=models.CASCADE,related_name='wishlist')
     product_variant = models.ForeignKey('products.ProductVariant', on_delete=models.CASCADE,related_name='wishlist')
 
