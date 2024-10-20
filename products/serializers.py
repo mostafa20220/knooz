@@ -8,39 +8,38 @@ from users.serializers import UserSerializer
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
-        fields = ['name']
-
+        exclude = ['created_at', 'updated_at']
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['name']
+        exclude = ['created_at','updated_at']
 
 class VariantSizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = VariantSize
-        fields = ['size']
+        exclude = ['created_at','updated_at']
 
 class VariantColorSerializer(serializers.ModelSerializer):
     class Meta:
         model = VariantColor
-        fields = ['color']
+        exclude = ['created_at','updated_at']
 
 class VariantImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = VariantImage
-        fields = '__all__'
+        fields = ['image','image_alt','is_default']
 
-class ProductVariantSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
-    images = serializers.ListField(child=serializers.ImageField(), required=False, write_only=True)
+class CreateProductVariantSerializer(serializers.ModelSerializer):
+    size = serializers.PrimaryKeyRelatedField(queryset=VariantSize.objects.all())
+    color = serializers.PrimaryKeyRelatedField(queryset=VariantColor.objects.all())
+    images = VariantImageSerializer(many=True, required=False)
 
     class Meta:
         model = ProductVariant
-        fields = '__all__'
+        fields = ['size', 'color', 'price', 'stock', 'images']
         extra_kwargs = {
-            'product': {'required': False},
-            }
+            'product': {'required': False}}
 
     def create(self, validated_data):
         product = validated_data.get('product')
@@ -54,118 +53,117 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         images = validated_data.pop('images', [])
         variant = ProductVariant.objects.create(**validated_data)
         variant_images = [VariantImage(variant=variant, image=image) for image in images]
-        VariantImage.objects.bulk_create(variant_images)
+        VariantImage.objects.bulk_create(variant_images, batch_size=500)
         return variant
 
-    # return the images along with the variant
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        size = VariantSizeSerializer(instance.size).data
-        color = VariantColorSerializer(instance.color).data
-        images = VariantImageSerializer(instance.variantimage_set.all(), many=True).data
-        data['images'] = images
-        data = {**data, **size, **color}
-        return data
+class ListProductVariantSerializer(serializers.ModelSerializer):
+    size = serializers.CharField(source='size.size')
+    color = serializers.CharField(source='color.color')
+    images = VariantImageSerializer(many=True, required=False)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    class Meta:
+        model = ProductVariant
+        fields = [ 'size', 'color', 'price','images']
+        extra_kwargs = {
+            'product': {'required': False},
+            }
 
-class ProductSerializer(serializers.ModelSerializer):
-    variants = ProductVariantSerializer(many=True,write_only=True, required=False)
+class DetailProductVariantSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+    size = VariantSizeSerializer(read_only=True)
+    color = VariantColorSerializer(read_only=True)
+    images = VariantImageSerializer(many=True, required=False)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    class Meta:
+        model = ProductVariant
+        fields = ['id', 'size', 'color', 'price','images']
+        extra_kwargs = {
+            'product': {'required': False},
+        }
+
+
+class ListProductSerializer(serializers.ModelSerializer):
+    variants = ListProductVariantSerializer(many=True)
+    brand = serializers.CharField(source='brand.name')
+    category = serializers.CharField(source='category.name')
+    seller = UserSerializer(read_only=True, required=False)
+
+    class Meta:
+        model = Product
+        exclude = ['created_at','updated_at']
+
+
+
+class CreateProductSerializer(serializers.ModelSerializer):
+    variants = CreateProductVariantSerializer(many=True)
+    brand = serializers.PrimaryKeyRelatedField(queryset=Brand.objects.all())
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    is_active = serializers.BooleanField(default=True, required=False, write_only=True)
+
+    class Meta:
+        model = Product
+        exclude = ['created_at', 'updated_at']
+
+    def create(self, data):
+        variants_data = data.pop('variants')
+
+        # check if there is a product with the same name and brand to the same seller
+        if Product.objects.filter(name=data.get('name'), brand=data.get('brand'),
+                                  seller=data.get('seller')).exists():
+            raise serializers.ValidationError("Product already exists")
+
+        # creating the product and its variants and its images in a transaction
+        with transaction.atomic():
+            product = Product.objects.create(**data)
+            images = []
+            for variant_data in variants_data:
+                variant_images = variant_data.pop('images', [])
+                variant = ProductVariant.objects.create(**variant_data, product=product)
+                images.extend([VariantImage(variant=variant, **image) for image in variant_images])
+            VariantImage.objects.bulk_create(images, batch_size=500)
+        return product
+
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+    variants = DetailProductVariantSerializer(many=True)
+    brand = BrandSerializer(read_only=True)
+    category = CategorySerializer(read_only=True)
+    seller = UserSerializer(read_only=True)
+
     class Meta:
         model = Product
         fields = '__all__'
-        extra_kwargs = {
-            'seller': {'read_only': True, 'required': False},
-            }
 
-
-    # return the variants along with the product
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        brand = BrandSerializer(instance.brand).data
-        category = CategorySerializer(instance.category).data
-        variants = ProductVariantSerializer(instance.productvariant_set.all(), many=True).data
-        seller = UserSerializer(instance.seller).data
-        data['brand'] = brand.get('name')
-        data['category'] = category.get('name')
-        data['variants'] = variants
-        data['seller'] = seller
-        return data
-
-    def create(self, validated_data):
-        variants_data = validated_data.pop('variants')
-        request = self.context.get('request')
-        seller = request.user if request and hasattr(request, 'user') else None
-
-        # check if there is a product with the same name and brand to the same seller
-        if Product.objects.filter(name=validated_data.get('name'), brand=validated_data.get('brand'), seller=seller).exists():
-            raise serializers.ValidationError("Product already exists")
-
-        with transaction.atomic():
-            product = Product.objects.create(seller=seller, **validated_data)
-            print("product", product)
-            # bulk_create instead of creating one by one
-            variants =[ProductVariant(product=product, **variant_data) for variant_data in variants_data]
-            ProductVariant.objects.bulk_create(variants)
-        return product
-    
     @transaction.atomic()
     def update(self, instance, validated_data):
-        # Update base product fields
-        instance.name = validated_data.get('name', instance.name)
-        instance.description = validated_data.get('description', instance.description)
-        instance.category = validated_data.get('category', instance.category)
-        instance.brand = validated_data.get('brand', instance.brand)
 
-        instance.free_shipping = validated_data.get('free_shipping', instance.free_shipping)
-        instance.free_return = validated_data.get('free_return', instance.free_return)
-        instance.best_selling = validated_data.get('best_selling', instance.best_selling)
-        instance.best_rated = validated_data.get('best_rated', instance.best_rated)
-        instance.is_active = validated_data.get('is_active', instance.is_active)
+        #  product update
+        update_fields = ['name', 'description', 'category', 'brand', 'free_shipping', 'free_return',
+                         'best_selling', 'best_rated', 'is_active']
+        for field in update_fields:
+            setattr(instance, field, validated_data.get(field, getattr(instance, field)))
+        instance.save(update_fields=update_fields)
 
-        instance.save(update_fields=['name', 'description', 'category', 'brand', 'free_shipping', 'free_return', 'best_selling', 'best_rated', 'is_active'])
-
-        # Handle variants update
+        # variants update and create
         if not validated_data.get('variants'):
             return instance
-        
-        variants_data = validated_data.pop('variants')
 
-        print("variants_data", variants_data)
-        variant_ids = [variant_data['id'] for variant_data in variants_data if 'id' in variant_data]
-        print("variant_ids", variant_ids)
+        variants = validated_data.pop('variants')
+        update_fields = ['color', 'size', 'price', 'stock']
 
-        # Get existing variants to update
-        existing_variants = ProductVariant.objects.filter(id__in=variant_ids, product=instance)
-
-        # Convert queryset to a dictionary for easy access
-        variant_dict = {variant.id: variant for variant in existing_variants}
-
-        # List for bulk_update
-        variants_to_update = []
-
-        # List for creating new variants (if any)
         variants_to_create = []
-
-        for variant_data in variants_data:
-            variant_id = variant_data.get('id', None)
-
-            if variant_id and variant_id in variant_dict:
-                # Update the existing variant
-                variant = variant_dict[variant_id]
-                variant.color = variant_data.get('color', variant.color)
-                variant.size = variant_data.get('size', variant.size)
-                variant.price = variant_data.get('price', variant.price)
-                variant.quantity = variant_data.get('quantity', variant.quantity)
-
-                variants_to_update.append(variant)
+        variants_to_update = []
+        for variant in variants:
+            variant_id = variant.get('id')
+            if not variant_id:
+                variants_to_create.append(variant)
             else:
-                # Create new variant
-                variants_to_create.append(ProductVariant(product=instance, **variant_data))
+                product_variant = ProductVariant.objects.get(id=variant_id)
+                for field in update_fields:
+                    setattr(product_variant, field, variant.get(field, getattr(product_variant, field)))
+                variants_to_update.append(product_variant)
 
-        # Perform bulk update and bulk create
-        with transaction.atomic():
-            if variants_to_update:
-                ProductVariant.objects.bulk_update(variants_to_update, ['color', 'size', 'price', 'quantity'])
-            if variants_to_create:
-                ProductVariant.objects.bulk_create(variants_to_create)
+        ProductVariant.objects.bulk_create(variants_to_create,batch_size=500)
+        ProductVariant.objects.bulk_update(variants_to_update, fields=update_fields, batch_size=500)
 
         return instance

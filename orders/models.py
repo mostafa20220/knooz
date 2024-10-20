@@ -29,14 +29,15 @@ ORDER_STATUS_CHOICES = [
 ]
 
 class Order(models.Model):
-    customer = models.ForeignKey(User, on_delete=models.CASCADE)
+    customer = models.ForeignKey(User, on_delete=models.CASCADE,related_name='orders')
     shipping_address = models.TextField() # take a snapshot of the shipping address at the time of the order
-    payment_method = models.CharField(choices=PAYMENT_METHOD_CHOICES, max_length=20)
+    payment_method = models.CharField(choices=PAYMENT_METHOD_CHOICES, max_length=20, default=CASH_ON_DELIVERY)
     payment_details = models.TextField(blank=True, null=True) # store the payment details (last 4 digits, etc.)
     order_status= models.CharField(choices=ORDER_STATUS_CHOICES, default=PENDING, max_length=20)
 
     items_value = models.DecimalField(max_digits=10, decimal_places=2)
     shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=20)
+    cod_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0) # cash on delivery fee
     coupon_code = models.CharField(max_length=50, blank=True, null=True)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0) # discount amount (by coupon code percentage * items_total_price)
     order_total = models.DecimalField(max_digits=10, decimal_places=2) # items_total_price + shipping_fee - discount_amount
@@ -47,7 +48,23 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    product_variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True)
-    quantity = models.IntegerField()
+    order = models.ForeignKey(Order, on_delete=models.CASCADE,related_name='items')
+
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ordered_products') # I am not sure
+    category = models.CharField(max_length=50)
+    brand = models.CharField(max_length=50)
+    size = models.CharField(max_length=10, blank=True, null=True)
+    color = models.CharField(max_length=50, blank=True, null=True)
+    image = models.ImageField(upload_to='order_product_images/', blank=True, null=True)
+
+    free_shipping = models.BooleanField(default=False)
+    free_return = models.BooleanField(default=False)
+    is_returnable = models.BooleanField(default=True)
+    best_selling = models.BooleanField(default=False)
+    best_rated = models.BooleanField(default=False)
+
+    quantity = models.PositiveSmallIntegerField()
     item_price = models.DecimalField(max_digits=10, decimal_places=2) # product_variant.price * quantity

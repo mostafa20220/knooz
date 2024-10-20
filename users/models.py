@@ -24,8 +24,6 @@ class UserManger(BaseUserManager):
             raise ValueError('Users must have an email address')
 
         try:
-
-            print("Extra Fields: ", extra_fields)
             user = self.model(
                 email=self.normalize_email(email),
                 **extra_fields)
@@ -73,21 +71,53 @@ class User(AbstractUser):
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name', 'user_type', 'is_active', 'image']
-    
+
     class Meta:
         db_table = 'auth_user'
         verbose_name = 'User'
         verbose_name_plural = 'Users'
-    
 
     def __str__(self):
-        return self.email
+        return self.first_name + ' ' + self.last_name
 
 
-class UserCreditCard(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+class CreditCard(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='credit_cards')
     card_number = models.CharField(max_length=16)
     card_holder_name = models.CharField(max_length=50)
     expiration_date = models.TextField(max_length=5) # 03/26
     is_default = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ShippingAddress(models.Model):
+    user = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name='shipping_addresses')
+
+    country = models.CharField(max_length=50)
+    state = models.CharField(max_length=50,null=True,blank=True)
+    city = models.CharField(max_length=50)
+    postal_code = models.CharField(max_length=10)
+    street = models.CharField(max_length=255)
+    building_number = models.PositiveIntegerField()
+    floor_number = models.PositiveIntegerField(null=True,blank=True)
+    apartment_number = models.PositiveIntegerField(null=True,blank=True)
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+    is_default = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'country', 'city', 'postal_code', 'street', 'building_number'], name='unique_address')
+        ]
+
+    def save( self,*args, **kwargs):
+        if self.is_default:
+            try:
+                ShippingAddress.objects.filter(user=self.user).update(is_default=False)
+            except Exception as e:
+                raise ValueError('Error while updating default shipping address:', e)
+        super(ShippingAddress, self).save(*args,**kwargs)
+

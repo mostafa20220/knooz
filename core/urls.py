@@ -7,18 +7,18 @@ from django.urls import path, include, re_path
 urlpatterns = [
   re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
   path('admin/', admin.site.urls),
+  path('silk/', include('silk.urls', namespace='silk')),
+
   path('auth/', include('djoser.urls')),
   path('auth/', include('djoser.urls.jwt')),
 
-  path('', include('products.urls')),
-  # this will include all the urls from products app
-  # /products
-  # /variants
-  # /variant-images
-
+  path('products', include('products.urls')),
   path('cart/', include('carts.urls')),
   path('orders/', include('orders.urls')),
 
+  path('wishlist/', include('wishlists.urls')),
+  path('shipping-addresses', include('users.urls')),
+  path('reviews/', include('reviews.urls')),
 ]
 
 # let's design the api for our e-commerce app

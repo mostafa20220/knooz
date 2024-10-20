@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'silk',
+    'django_filters',
     'rest_framework',
     'djoser',
     'phonenumber_field',
@@ -46,7 +48,6 @@ INSTALLED_APPS = [
     'orders',
     'carts',
     'coupons',
-    'shipping',
     'wishlists',
     'reviews'
 ]
@@ -59,6 +60,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'silk.middleware.SilkyMiddleware',
+
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -143,7 +146,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'PAGE_SIZE': 5,  # Adjust the page size as needed
+    'PAGE_SIZE': 20,  # Adjust the page size as needed
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
 
 }
 

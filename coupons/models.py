@@ -9,7 +9,7 @@ class Coupon(models.Model):
 
     is_active = models.BooleanField(default=True)
     is_global = models.BooleanField()
-    category = models.ForeignKey('products.Category', on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.ForeignKey('products.Category', on_delete=models.SET_NULL, null=True, blank=True,related_name='coupons')
 
     min_order_value = models.DecimalField(max_digits=10, decimal_places=2)
     max_discount_value = models.DecimalField(max_digits=10, decimal_places=2)
@@ -22,5 +22,5 @@ class Coupon(models.Model):
         return self.code
 
 class CouponVariant(models.Model):
-    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE)
-    productVariant = models.ForeignKey('products.ProductVariant', on_delete=models.CASCADE)
+    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE,related_name='variants')
+    productVariant = models.ForeignKey('products.ProductVariant', on_delete=models.CASCADE,related_name='coupons')
