@@ -4,6 +4,11 @@ from .models import Product, ProductVariant
 
 
 class ProductFilter(django_filters.FilterSet):
+    price_min = django_filters.NumberFilter(field_name='variants__price', lookup_expr='gte')
+    price_max = django_filters.NumberFilter(field_name='variants__price', lookup_expr='lte')
+    color = django_filters.CharFilter(field_name='variants__color', lookup_expr='exact')
+    size = django_filters.CharFilter(field_name='variants__size', lookup_expr='exact')
+
     class Meta:
         model = Product
         fields = {
@@ -15,13 +20,4 @@ class ProductFilter(django_filters.FilterSet):
             'best_selling': ['exact'],  # Exact match on best_selling
             'best_rated': ['exact'],    # Exact match on best_rated
             'seller': ['exact'],    # Exact match on seller
-        }
-
-class ProductVariantFilter(django_filters.FilterSet):
-    class Meta:
-        model = ProductVariant
-        fields = {
-            'price': ['lt', 'gt'],    # Filter for less than or greater than price
-            'color': ['exact'],   # Exact match on color
-            'size': ['exact'],    # Exact match on size
         }

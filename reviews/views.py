@@ -18,9 +18,10 @@ class ProductReviewsViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         customer = self.request.user
-        product = serializer.validated_data['product']
-        is_verified = Order.objects.filter(customer=customer, product=product, status=DELIVERED).exists()
-        serializer.save(customer=self.request.user,seller=serializer.validated_data['product'].seller,is_verified=is_verified)
+        print("serializer.validated_data:->",serializer.validated_data)
+        product = serializer.validated_data.get('product')
+        is_verified = Order.objects.filter(customer=customer, product_uuid=product.product_uuid, status=DELIVERED).exists()
+        serializer.save(customer=self.request.user,seller=product.seller,is_verified=is_verified)
 
     def get_queryset(self):
         product_pk = self.request.data.get('product')

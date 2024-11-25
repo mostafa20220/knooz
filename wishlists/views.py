@@ -21,7 +21,15 @@ class WishlistViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return (WishlistItem.objects.filter(customer=self.request.user)
                 .select_related('product_variant')
-                .prefetch_related('product_variant__product'))
+                .prefetch_related(
+                'product_variant__images',
+                'product_variant__size',
+                'product_variant__color',
+                'product_variant__product',
+                'product_variant__product__category',
+                'product_variant__product__brand',
+                'product_variant__product__seller')
+        )
 
     def perform_create(self, serializer):
         serializer.save(customer=self.request.user)

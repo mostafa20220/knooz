@@ -122,3 +122,13 @@ class ShippingAddress(BaseTimeStamp):
                 raise ValueError('Error while updating default shipping address:', e)
         super(ShippingAddress, self).save(*args,**kwargs)
 
+    def __str__(self):
+        fields = ['apartment_number', 'floor_number', 'building_number', 'street', 'postal_code', 'city', 'state', 'country', 'description']
+        # create the shipping address snapshot where each field : field value is separated by a comma
+        address_list = []
+        for field in fields:
+            value = getattr(self, field)
+            if value:
+                address_list.append(f"{field}: {value}")
+        shipping_address_snapshot = ', '.join(address_list)
+        return shipping_address_snapshot

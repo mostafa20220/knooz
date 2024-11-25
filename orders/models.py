@@ -18,14 +18,16 @@ CANCELLED = 'cancelled'  # Order is cancelled by the user (only if the order is 
 PLACED = 'placed' # Order is placed by the user (after payment step is completed)
 SHIPPED = 'shipped'
 DELIVERED = 'delivered' # Order is delivered to the user (if the payment method is COD, then we assume the payment is completed)
+RETURNED = 'returned' # Order is returned by the user (only could happen after being delivered)
 REFUNDED = 'refunded' # Order is refunded to the user (only could happen after being delivered)
 
 ORDER_STATUS_CHOICES = [
     (PENDING, 'Pending'),
-    (CANCELLED, 'Cancelled'),
     (PLACED, 'Placed'),
+    (CANCELLED, 'Cancelled'),
     (SHIPPED, 'Shipped'),
     (DELIVERED, 'Delivered'),
+    (RETURNED, 'Returned'),
     (REFUNDED, 'Refunded')
 ]
 
@@ -33,7 +35,6 @@ class Order(BaseTimeStamp):
     customer = models.ForeignKey('users.User', on_delete=models.CASCADE,related_name='orders')
     shipping_address = models.TextField() # take a snapshot of the shipping address at the time of the order
     payment_method = models.CharField(choices=PAYMENT_METHOD_CHOICES, max_length=20, default=CASH_ON_DELIVERY)
-    payment_details = models.TextField(blank=True, null=True) # store the payment details (last 4 digits, etc.)
     order_status= models.CharField(choices=ORDER_STATUS_CHOICES, default=PENDING, max_length=20)
 
     items_value = models.DecimalField(max_digits=10, decimal_places=2)
@@ -48,6 +49,7 @@ class Order(BaseTimeStamp):
 class OrderItem(models.Model):
     order = models.ForeignKey('orders.Order', on_delete=models.CASCADE,related_name='items')
 
+    product_uuid = models.CharField(max_length=50) # product unique id
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 

@@ -4,12 +4,9 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 from users.models import SELLER
 
 class IsSellerOrReadOnly(BasePermission):
-    message = 'You do not have permission to perform this action. Only sellers are allowed.'
+    message = 'You do not have permission to perform this action.'
 
     def has_permission(self, request, view):
-        print("from IsSellerOrReadOnly")
-        print("User: ", request.user)
-        print("Is Authenticated: ", request.user.is_authenticated)
 
         # Allow read-only access for any user
         if request.method in SAFE_METHODS:

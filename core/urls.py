@@ -11,16 +11,17 @@ urlpatterns = [
 
   re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
   path('admin/', admin.site.urls),
-  path('products', include('products.urls')),
+  path('products/', include('products.urls')),
   path('cart/', include('carts.urls')),
   path('orders/', include('orders.urls')),
   path('wishlist/', include('wishlists.urls')),
   path('shipping-addresses', include('users.urls')),
   path('reviews/', include('reviews.urls')),
+  path('apply-coupon/',include('coupons.urls')),
 ]
 
-urlpatterns += [path(r'^i18n/', include('django.conf.urls.i18n')),]
-urlpatterns += i18n_patterns(path(r'^admin/', admin.site.urls))
+urlpatterns += [path('i18n/', include('django.conf.urls.i18n')),]
+urlpatterns += i18n_patterns(path('admin/', admin.site.urls))
 
 
 # let's design the api for our e-commerce app

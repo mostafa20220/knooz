@@ -1,19 +1,23 @@
 from decimal import Decimal
 
 from django.db import transaction
-from django.utils import timezone
+from django.db.models import F
 from rest_framework import serializers
 
-from carts.views import SHIPPING_FEE, COD_FEE
-from coupons.models import Coupon
-from orders.models import Order, OrderItem, CASH_ON_DELIVERY, CREDIT_CARD, PENDING, PLACED, CANCELLED
+from carts.views import  calc_cod_fee, calc_shipping_fee, calc_items_value
+from coupons.serializers import validate_coupon_code, calc_discount_amount
+from orders.models import Order, OrderItem, CASH_ON_DELIVERY, CREDIT_CARD
+from products.models import ProductVariant
 from users.models import ShippingAddress, CreditCard
+
+
+def calc_estimated_tax(order_total):
+    return Decimal('0.14') * order_total
 
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = '__all__'
-
 
 class OrderSerializer(serializers.ModelSerializer):
     shipping_address = serializers.PrimaryKeyRelatedField(queryset=ShippingAddress.objects.all())
@@ -34,55 +38,28 @@ class OrderSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
+        self._validate_the_cart_is_not_empty()
         self._validate_shipping_address(attrs.get('shipping_address'))
         self._validate_payment_method(attrs.get('payment_method'))
         if attrs.get('payment_method') == CREDIT_CARD:
             self._validate_credit_card(attrs.get('credit_card'))
 
-        coupon = self._validate_coupon_code(attrs.get('coupon_code'))
+        coupon = validate_coupon_code(attrs.get('coupon_code'), self.context['request'].user)
         attrs['coupon'] = coupon
         return attrs
+
+    def _validate_the_cart_is_not_empty(self):
+        customer = self.context.get('request').user
+        cart_items = customer.cart.all()
+        print("cart_items: ",cart_items)
+        print("len(cart_items)",len(cart_items))
+        if not len(cart_items):
+            raise serializers.ValidationError("The Cart is Empty, Can't Order Yet.")
 
     def _validate_shipping_address(self, shipping_address):
         customer = self.context['request'].user
         if shipping_address.user != customer:
             raise serializers.ValidationError("This shipping address does not belong to you")
-
-    def _validate_coupon_code(self, coupon_code):
-        if not coupon_code:
-            return
-        customer = self.context['request'].user
-        coupon = Coupon.objects.filter(code__iexact=coupon_code).first()
-        if not coupon:
-            raise serializers.ValidationError("Invalid coupon code")
-        # check if the coupon is active
-        if not coupon.is_active:
-            raise serializers.ValidationError("This coupon is not active")
-        # check if the coupon is expired
-        if not coupon.start_date < timezone.now() < coupon.end_date:
-            raise serializers.ValidationError("This coupon is expired")
-
-        # check if the coupon is used more than the max_use_per_user
-        if customer.orders.filter(coupon_code=coupon.code).count() >= coupon.max_use_per_user:
-            raise serializers.ValidationError("This coupon is used more than the max use per user")
-
-        # check if the order value is more than the min_order_value
-        order_value = sum([item.product_variant.price * item.quantity for item in customer.cart.all()])
-        if order_value < coupon.min_order_value:
-            raise serializers.ValidationError("This coupon is not valid for this order value")
-
-        # check if the coupon is global or for a specific category
-        if not coupon.is_global:
-            # check if the coupon is for a specific category
-            if not coupon.category:
-                raise serializers.ValidationError("This coupon is not valid for this category")
-            # check if the all cart items from the category
-            cart_items = customer.cart.all()
-            for item in cart_items:
-                if item.product_variant.product.category != coupon.category:
-                    raise serializers.ValidationError("This coupon is not valid for this category")
-
-        return coupon
 
     def _validate_payment_method(self, payment_method):
         if payment_method not in [CREDIT_CARD, CASH_ON_DELIVERY]:
@@ -104,58 +81,28 @@ class OrderSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # prepare the needed data to create the order
         customer = self.context['request'].user
-        shipping_address = validated_data.get('shipping_address')
-        fields = ['apartment_number', 'floor_number', 'building_number', 'street', 'postal_code', 'city', 'state', 'country', 'description']
-        # create the shipping address snapshot where each field : field value is separated by a comma
-        address_list = []
-        for field in fields:
-            value = getattr(shipping_address, field)
-            if value:
-                address_list.append(f"{field}: {value}")
-        shipping_address_snapshot = ', '.join(address_list)
-
         cart_items = customer.cart.all()
-        print("cart_items:", cart_items)
 
-        shipping_fee = Decimal('0.00')
-        items_value = sum([Decimal(str(item.product_variant.price * item.quantity)) for item in cart_items])
-
-        if items_value < Decimal('2000.00'):
-            for item in cart_items:
-                is_free_shipping = item.product_variant.product.free_shipping
-                if not is_free_shipping:
-                    shipping_fee = Decimal(str(SHIPPING_FEE))
-                    break
-
-        # calculate the payment details based on the payment method
-        payment_details = None
-        cod_fee = Decimal('0.00')
+        shipping_address = str(validated_data.get('shipping_address'))
         payment_method = validated_data.get('payment_method')
-        if  payment_method == CREDIT_CARD:
-            credit_card = validated_data.get('credit_card')
-            payment_details = f"**** **** **** {credit_card.card_number[-4:]}"
-        else: # cash on delivery
-            payment_details = "Cash on delivery"
-            cod_fee = COD_FEE
-
-        # calculate the discount amount based on the coupon
-        discount_amount = Decimal('0.00')
         coupon = validated_data.get('coupon')
-        if coupon:
-            discount_amount = Decimal(str(coupon.discount_percentage)) * items_value / Decimal('100.00')
-            if discount_amount > coupon.max_discount_value:
-                discount_amount = coupon.max_discount_value
+        coupon_code = validated_data.get('coupon_code')
 
-        order_total = items_value + shipping_fee + cod_fee - discount_amount
-        estimated_tax = Decimal('0.14') * order_total
+        items_value = calc_items_value(cart_items)
+        shipping_fee = calc_shipping_fee(items_value, cart_items)
+        cod_fee = calc_cod_fee(payment_method)
+        discount_amount = calc_discount_amount(coupon, items_value)
+
+        order_total = sum([items_value, shipping_fee, cod_fee]) - discount_amount
+
+        estimated_tax = calc_estimated_tax(order_total)
 
         # create the order
         order = Order.objects.create(
             customer=customer,
-            shipping_address=shipping_address_snapshot,
+            shipping_address=shipping_address,
             payment_method=payment_method,
-            payment_details=payment_details,
-            coupon_code=validated_data.get('coupon_code'),
+            coupon_code=coupon_code,
             items_value=items_value,
             shipping_fee=shipping_fee,
             cod_fee=cod_fee,
@@ -163,6 +110,10 @@ class OrderSerializer(serializers.ModelSerializer):
             order_total=order_total,
             estimated_tax=estimated_tax
         )
+
+        # update the coupon usage count
+        coupon.usage_count += 1
+        coupon.save()
 
         # create the order items
         order_items = [OrderItem(
@@ -181,21 +132,21 @@ class OrderSerializer(serializers.ModelSerializer):
             best_rated= item.product_variant.product.best_rated,
             quantity= item.quantity,
             item_price= item.product_variant.price * item.quantity,
-            image = item.product_variant.images.first() if item.product_variant.images.first() else None
+            product_uuid= item.product_variant.product.product_uuid,
+            # image = item.product_variant.images.first() if item.product_variant.images.first() else None
         ) for item in cart_items ]
 
         print("order_items:", order_items)
         OrderItem.objects.bulk_create(order_items, batch_size=500)
 
+        # update the stock of the products
+        updated_products =  []
+        for cart_item in customer.cart.all():
+            cart_item.product_variant.stock -= cart_item.quantity
+            updated_products.append(cart_item.product_variant)
+        ProductVariant.objects.bulk_update(updated_products, ['stock','updated_at'], 500)
+
         # delete the cart items
-        # cart_items.delete()
+        cart_items.delete()
 
         return order
-
-    def update(self, instance, validated_data):
-        order_status = validated_data.get('order_status')
-
-        # can only cancel the order if it is not shipped yet (either pending or placed)
-        if order_status == CANCELLED and instance.order_status in [PENDING,PLACED]:
-            instance.order_status = order_status
-            instance.save()

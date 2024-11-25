@@ -10,7 +10,7 @@ from users.serializers import UserSerializer
 
 
 class ListCartProduct(serializers.ModelSerializer):
-    seller = UserSerializer(read_only=True)
+    seller = serializers.StringRelatedField()
     category = serializers.StringRelatedField()
     brand = serializers.StringRelatedField()
 
@@ -78,3 +78,8 @@ class CartSerializer(serializers.ModelSerializer):
         data['product'] = {**data.get('product'), **variant}
         return data
 
+
+    # def to_representation(self, instance):
+    #     data = super().to_representation(instance)
+    #     data['product'] = {**data.get('product'), **data.pop('product_variant')}
+    #     return data

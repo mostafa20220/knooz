@@ -1,3 +1,5 @@
+from encodings.base64_codec import base64_decode
+
 from rest_framework import serializers
 from products.models import Product, ProductVariant, VariantImage, VariantSize, VariantColor, Brand, Category
 from django.db import transaction
@@ -26,6 +28,7 @@ class VariantColorSerializer(serializers.ModelSerializer):
         exclude = ['created_at','updated_at']
 
 class VariantImageSerializer(serializers.ModelSerializer):
+    image = serializers.CharField(write_only=True)
     class Meta:
         model = VariantImage
         fields = ['image','image_alt','is_default']
@@ -52,6 +55,8 @@ class CreateProductVariantSerializer(serializers.ModelSerializer):
 
         images = validated_data.pop('images', [])
         variant = ProductVariant.objects.create(**validated_data)
+        img_file = base64_decode(images[0].get('image'))
+        print("img_file:", img_file)
         variant_images = [VariantImage(variant=variant, image=image) for image in images]
         VariantImage.objects.bulk_create(variant_images, batch_size=500)
         return variant
@@ -99,6 +104,7 @@ class CreateProductSerializer(serializers.ModelSerializer):
     brand = serializers.PrimaryKeyRelatedField(queryset=Brand.objects.all())
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
     is_active = serializers.BooleanField(default=True, required=False, write_only=True)
+    seller = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = Product
@@ -106,6 +112,8 @@ class CreateProductSerializer(serializers.ModelSerializer):
 
     def create(self, data):
         variants_data = data.pop('variants')
+
+        print("seller:", data.get('seller'))
 
         # check if there is a product with the same name and brand to the same seller
         if Product.objects.filter(name=data.get('name'), brand=data.get('brand'),

@@ -1,7 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, DestroyAPIView
-from rest_framework.response import Response
 
 from products.filters import ProductFilter
 from products.models import Product, ProductVariant, VariantImage
@@ -29,25 +27,10 @@ class ProductListView(ListCreateAPIView):
         )
         return queryset
 
-    # # delete variant or variant image if its pk is passed in the url
-    # def destroy(self, request, *args, **kwargs):
-    #     variant_pk = kwargs.get('variant_pk')
-    #     variant_image_pk = kwargs.get('variant_image_pk')
-    #
-    #     if variant_pk:
-    #         variant = ProductVariant.objects.filter(pk=variant_pk).first()
-    #         if variant:
-    #             variant.delete()
-    #             return Response(status=status.HTTP_204_NO_CONTENT)
-    #
-    #     if variant_image_pk:
-    #         variant_image = VariantImage.objects.filter(pk=variant_image_pk).first()
-    #         if variant_image:
-    #             variant_image.delete()
-    #             return Response(status=status.HTTP_204_NO_CONTENT)
-    #
-    #     return Response(status=status.HTTP_404_NOT_FOUND)
-    #
+    def perform_create(self, serializer):
+        serializer.save(seller=self.request.user)
+
+
 class ProductDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductDetailSerializer
@@ -65,6 +48,10 @@ class VariantDetailView(DestroyAPIView):
     queryset = ProductVariant.objects.all()
     serializer_class = DetailProductVariantSerializer
     permission_classes = [IsSellerOrReadOnly]
+
+    def get_queryset(self):
+        self.queryset = ProductVariant.objects.filter("product__seller" == self.request.user)
+        return self.queryset
 
 class ImageDetailView(DestroyAPIView):
     queryset = VariantImage.objects.all()

@@ -1,3 +1,9 @@
-from django.shortcuts import render
+from rest_framework.generics import CreateAPIView
 
-# Create your views here.
+from core.permissions import IsCustomer
+from coupons.serializers import ApplyCouponSerializer
+
+# apply coupon code
+class ApplyCouponAPIView(CreateAPIView):
+    serializer_class = ApplyCouponSerializer
+    permission_classes = [IsCustomer]

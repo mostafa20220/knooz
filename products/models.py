@@ -1,3 +1,7 @@
+from encodings.base64_codec import base64_decode
+from enum import unique
+from uuid import uuid4
+
 from django.db import models, transaction
 
 from core.models import BaseTimeStamp
@@ -35,6 +39,8 @@ class Product(BaseTimeStamp):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
+    product_uuid = models.UUIDField(unique=True, editable=False,default=uuid4)
+
     seller = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='products')
     category = models.ForeignKey('products.Category', on_delete=models.PROTECT, related_name='products')
     brand = models.ForeignKey('products.Brand', on_delete=models.PROTECT, related_name='products')
@@ -70,9 +76,14 @@ class VariantImage(BaseTimeStamp):
     is_default = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
-        with transaction.atomic():
+        # with transaction.atomic():
             if self.is_default:
                 VariantImage.objects.filter(variant=self.variant).update(is_default=False)
+            # decode the image base64 to get the image format
+            print("self.image:", self.image)
+            self.image = base64_decode(self.image)
+            print("self.image:", self.image)
+
             super().save(*args, **kwargs)
 
     def __str__(self):
