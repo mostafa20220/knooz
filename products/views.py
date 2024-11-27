@@ -20,12 +20,19 @@ class ProductListView(ListCreateAPIView):
         return CreateProductSerializer
 
     def get_queryset(self):
-        queryset = Product.objects.select_related('category', 'brand', 'seller').prefetch_related(
-            'variants__images',
-            'variants__size',
-            'variants__color'
-        )
-        return queryset
+        self.queryset = (Product.objects
+                    .select_related(
+                        'category',
+                        'brand',
+                        'seller'
+                    )
+                    .prefetch_related(
+                        'variants__images',
+                        'variants__size',
+                        'variants__color'
+                    )
+                    .order_by('-created_at'))
+        return self.queryset
 
     def perform_create(self, serializer):
         serializer.save(seller=self.request.user)

@@ -1,4 +1,17 @@
 services:
+
+  nginx:
+    image: nginx:1.21
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./static:/static
+      - ./media:/media
+
+    depends_on:
+      - web
+
   db:
     image: postgres:16
     environment:
@@ -15,8 +28,6 @@ services:
     build: .
     volumes:
       - .:/code
-    ports:
-      - "8000:8000"
     depends_on:
       - db
     env_file:

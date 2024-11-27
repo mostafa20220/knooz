@@ -4,3 +4,6 @@ venv
 db.sqlite3
 *.drawio
 .env
+.idea/
+static/
+media/

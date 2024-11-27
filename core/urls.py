@@ -1,6 +1,4 @@
-from django.conf import settings
 from django.conf.urls.i18n import i18n_patterns
-from django.conf.urls.static import serve
 from django.contrib import admin
 from django.urls import path, include, re_path
 
@@ -9,7 +7,6 @@ urlpatterns = [
   path('auth/', include('djoser.urls.jwt')),
   path('silk/', include('silk.urls', namespace='silk')),
 
-  re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
   path('admin/', admin.site.urls),
   path('products/', include('products.urls')),
   path('cart/', include('carts.urls')),
