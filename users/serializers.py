@@ -14,6 +14,9 @@ class ShippingAddressSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'user': {'read_only': True}
         }
+        constraints = [
+            UniqueConstraint(fields=['user', 'country', 'city', 'postal_code', 'street', 'building_number','floor_number','apartment_number'], name='unique_shipping_address')
+        ]
 
     def create(self, validated_data):
         try:
@@ -23,12 +26,13 @@ class ShippingAddressSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(default=True,write_only=True)
-    
+
     class Meta:
         model = User
-        fields = ('id', 'first_name','last_name', 'email','is_active','phone', 'password')
+        fields = ('id', 'first_name','last_name', 'email','is_active','phone', 'password','user_type')
         extra_kwargs = {
-            'password': {'write_only': True}
+            'password': {'write_only': True},
+            'user_type': {'write_only': True}
         }
 
     def create(self, validated_data):
