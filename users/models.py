@@ -21,7 +21,7 @@ class UserManger(BaseUserManager):
 
         extra_fields.setdefault('is_active', True)
         extra_fields.setdefault('user_type', CUSTOMER)
-        
+
         if not email:
             raise ValueError('Users must have an email address')
 
@@ -80,7 +80,11 @@ class User(AbstractUser):
         verbose_name_plural = 'Users'
 
     def __str__(self):
-        return self.first_name + ' ' + self.last_name
+        result = []
+        for name in [self.first_name, self.last_name]:
+            if name:
+                result.append(name)
+        return ' '.join(result)
 
 
 class CreditCard(BaseTimeStamp):
@@ -111,7 +115,7 @@ class ShippingAddress(BaseTimeStamp):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['user', 'country', 'city', 'postal_code', 'street', 'building_number'], name='unique_address')
+            models.UniqueConstraint(fields=['user', 'country', 'city', 'postal_code', 'street', 'building_number','floor_number','apartment_number'], name='unique_address')
         ]
 
     def save( self,*args, **kwargs):
