@@ -6,13 +6,12 @@ urlpatterns = [
   path('auth/', include('djoser.urls')),
   path('auth/', include('djoser.urls.jwt')),
   path('silk/', include('silk.urls', namespace='silk')),
-
   path('admin/', admin.site.urls),
   path('products/', include('products.urls')),
   path('cart/', include('carts.urls')),
   path('orders/', include('orders.urls')),
   path('wishlist/', include('wishlists.urls')),
-  path('shipping-addresses', include('users.urls')),
+  path('shipping-addresses/', include('users.urls')),
   path('reviews/', include('reviews.urls')),
   path('apply-coupon/',include('coupons.urls')),
 ]
