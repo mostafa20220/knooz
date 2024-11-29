@@ -1,18 +1,15 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, DestroyAPIView
-
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from products.serializers import ListProductSerializer, CreateProductSerializer, DetailProductSerializer
+from core.permissions import ReadOnly, IsSeller
 from products.filters import ProductFilter
-from products.models import Product, ProductVariant, VariantImage
-from products.serializers import VariantImageSerializer, ListProductSerializer, \
-    CreateProductSerializer, ProductDetailSerializer, DetailProductVariantSerializer
-from products.permissions import IsSellerOrReadOnly
+from products.services import get_product_queryset, get_seller_products_queryset
+
 
 class ProductListView(ListCreateAPIView):
-    queryset = Product.objects.all()
-    permission_classes = [IsSellerOrReadOnly]
-    serializer_class = ListProductSerializer
-    filter_backends = [DjangoFilterBackend]  # Use DjangoFilterBackend to enable filtering
-    filterset_class = ProductFilter  # Specify the filterset
+    permission_classes = [ReadOnly | IsSeller]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ProductFilter
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -20,18 +17,7 @@ class ProductListView(ListCreateAPIView):
         return CreateProductSerializer
 
     def get_queryset(self):
-        self.queryset = (Product.objects
-                    .select_related(
-                        'category',
-                        'brand',
-                        'seller'
-                    )
-                    .prefetch_related(
-                        'variants__images',
-                        'variants__size',
-                        'variants__color'
-                    )
-                    .order_by('-created_at'))
+        self.queryset = get_product_queryset()
         return self.queryset
 
     def perform_create(self, serializer):
@@ -39,28 +25,13 @@ class ProductListView(ListCreateAPIView):
 
 
 class ProductDetailView(RetrieveUpdateDestroyAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductDetailSerializer
-    permission_classes = [IsSellerOrReadOnly]
+    serializer_class = DetailProductSerializer
+    permission_classes = [ReadOnly | IsSeller]
 
     def get_queryset(self):
-        queryset = Product.objects.select_related('category', 'brand', 'seller').prefetch_related(
-            'variants__images',
-            'variants__size',
-            'variants__color'
-        )
+        if self.request.method == 'GET':
+            return get_product_queryset()
+
+        seller = self.request.user
+        queryset = get_seller_products_queryset(seller)
         return queryset
-
-class VariantDetailView(DestroyAPIView):
-    queryset = ProductVariant.objects.all()
-    serializer_class = DetailProductVariantSerializer
-    permission_classes = [IsSellerOrReadOnly]
-
-    def get_queryset(self):
-        self.queryset = ProductVariant.objects.filter("product__seller" == self.request.user)
-        return self.queryset
-
-class ImageDetailView(DestroyAPIView):
-    queryset = VariantImage.objects.all()
-    serializer_class = VariantImageSerializer
-    permission_classes = [IsSellerOrReadOnly]
