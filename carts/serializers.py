@@ -1,12 +1,9 @@
-from itertools import product
-
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from carts.models import Cart
 from products.models import ProductVariant, Product
 from products.serializers import ListProductVariantSerializer
-from users.serializers import UserSerializer
 
 
 class ListCartProduct(serializers.ModelSerializer):
@@ -77,9 +74,3 @@ class CartSerializer(serializers.ModelSerializer):
         variant = ListProductVariantSerializer(instance.product_variant).data
         data['product'] = {**data.get('product'), **variant}
         return data
-
-
-    # def to_representation(self, instance):
-    #     data = super().to_representation(instance)
-    #     data['product'] = {**data.get('product'), **data.pop('product_variant')}
-    #     return data
