@@ -1,4 +1,4 @@
-from encodings.base64_codec import base64_decode
+# from encodings.base64_codec import base64_decode
 from enum import unique
 from uuid import uuid4
 
@@ -79,12 +79,6 @@ class VariantImage(BaseTimeStamp):
         # with transaction.atomic():
             if self.is_default:
                 VariantImage.objects.filter(variant=self.variant).update(is_default=False)
-            # decode the image base64 to get the image format
-            print("self.image:", self.image)
-            self.image = base64_decode(self.image)
-            print("self.image:", self.image)
-
-            super().save(*args, **kwargs)
 
     def __str__(self):
         return self.image.url
