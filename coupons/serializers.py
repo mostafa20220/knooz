@@ -2,8 +2,9 @@ from decimal import Decimal
 
 from django.utils import timezone
 from rest_framework import serializers
+
+from carts.services import get_cart_items_value
 from coupons.models import Coupon
-from orders.serializers import calc_items_value
 
 
 def validate_coupon_code(coupon_code, customer):
@@ -80,6 +81,6 @@ class ApplyCouponSerializer(serializers.Serializer):
         coupon = validated_data.get('coupon')
         cart_items = validated_data.get('cart_items')
 
-        items_value = calc_items_value(cart_items)
+        items_value = get_cart_items_value(cart_items)
         discount_amount = calc_discount_amount(coupon, items_value)
         return {'discount_amount': discount_amount}
