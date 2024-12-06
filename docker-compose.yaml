@@ -5,7 +5,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./default.conf:/etc/nginx/conf.d/default.conf
       - ./static:/static
       - ./media:/media
 
@@ -18,9 +18,8 @@ services:
       POSTGRES_DB: ecommerce
       POSTGRES_USER: app
       POSTGRES_PASSWORD: postgresql
-      PGDATA: /tmp
     volumes:
-      - ./data/db:/var/lib/postgresql/data
+      - baraka-db:/var/lib/postgresql/data
     ports:
       - "5434:5432"
 
@@ -33,3 +32,5 @@ services:
     env_file:
       - ./.env
 
+volumes:
+    baraka-db:

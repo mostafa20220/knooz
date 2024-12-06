@@ -1,16 +1,10 @@
 from django.db import models
-
+from core.constants import PAYMENT_METHOD_CHOICES, CASH_ON_DELIVERY
 from core.models import BaseTimeStamp
 from products.models import ProductVariant
 from users.models import User
 
 # payment method choices
-CREDIT_CARD = 'credit card'
-CASH_ON_DELIVERY = 'cash on delivery'
-PAYMENT_METHOD_CHOICES = [
-    (CREDIT_CARD, 'Credit Card'),
-    (CASH_ON_DELIVERY, 'Cash on Delivery')
-]
 
 # order status choices
 PENDING = 'pending'

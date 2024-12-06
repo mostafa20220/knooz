@@ -1,7 +1,7 @@
 from decimal import Decimal
 from carts.models import Cart
-from core.constants import SHIPPING_FEE_THRESHOLD, SHIPPING_FEE, COD_FEE, ADDED_VALUE_TAX_RATE
-from orders.models import CREDIT_CARD
+from core.constants import SHIPPING_FEE_THRESHOLD, SHIPPING_FEE, COD_FEE, CREDIT_CARD
+from django.db.models import F, Sum, Case, When, DecimalField
 
 def get_customer_cart_queryset(customer):
     return (Cart.objects.filter(customer=customer)
@@ -21,7 +21,6 @@ def get_cart_items_value(cart_items):
         items_value = Sum(F('product_variant__price') * F('quantity')),
     ).get('items_value', Decimal('0.00'))
 
-from django.db.models import F, Sum, Case, When, Value, DecimalField, BooleanField, Count
 
 def get_cart_summary(cart_items):
     # Annotate intermediate values
