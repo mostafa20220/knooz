@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from core.permissions import IsCustomer
 from orders.models import Order, CANCELLED, PENDING, PLACED, DELIVERED, RETURNED, OrderItem
 from orders.serializers import OrderSerializer
+from products.models import ProductVariant
 
 class OrderListAPIView(ListCreateAPIView):
     queryset = Order.objects.all()
@@ -19,7 +20,8 @@ class OrderListAPIView(ListCreateAPIView):
         serializer.save(customer=self.request.user)
 
     def get_queryset(self):
-        return self.queryset.filter(customer=self.request.user).prefetch_related('items')
+        self.queryset.filter(customer=self.request.user).prefetch_related('items')
+        return self.queryset
 
 
 class OrderDetailAPIView(RetrieveAPIView):
@@ -31,6 +33,7 @@ class OrderDetailAPIView(RetrieveAPIView):
     def get_queryset(self):
         return self.queryset.filter(customer=self.request.user).prefetch_related('items')
 
+
 class CancelOrderAPIView(CreateAPIView):
     permission_classes = [IsCustomer]
 
@@ -38,21 +41,31 @@ class CancelOrderAPIView(CreateAPIView):
         pk = kwargs.get('pk')
         customer = request.user
         order = Order.objects.filter(pk=pk,customer=customer).first()
+        print("found order to cancel: ", order)
         if not order:
             return Response({'error': 'Order not found'}, status=404)
         if order.order_status in [PENDING, PLACED]:
-            while transaction.atomic():
+            with transaction.atomic():
+
+                # update the stock
+                variants_to_update = []
+                for item in order.items.all():
+                    print("item: ", item)
+                    print("old stock: ", item.variant.stock)
+                    item.variant.stock += item.quantity
+                    print("new stock: ", item.variant.stock)
+                    variants_to_update.append(item.variant)
+
+                ProductVariant.objects.bulk_update(variants_to_update, ['stock', 'updated_at'], 500)
+
                 # update the order status
                 order.order_status = CANCELLED
                 order.save()
 
-                # update the stock
-                
-
-
         else :
             return Response({'error': f'Order is {order.order_status} already'}, status=400)
         return Response(OrderSerializer(order).data)
+
 
 class ReturnOrderAPIView(CreateAPIView):
     permission_classes = [IsCustomer]
@@ -65,7 +78,6 @@ class ReturnOrderAPIView(CreateAPIView):
             return Response({'error': 'Order not found'}, status=404)
         if order.order_status == DELIVERED:
             with transaction.atomic():
-                order.items.update(product_variant__stock=F('product_variant__stock') + F('quantity'))
                 order.order_status = RETURNED
                 order.save()
         else:

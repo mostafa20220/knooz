@@ -1,8 +1,11 @@
+from django.forms import model_to_dict
 from rest_framework import serializers
 
 from coupons.serializers import validate_coupon_code
-from orders.models import Order, OrderItem, CASH_ON_DELIVERY, CREDIT_CARD
-from orders.services import  place_new_order
+from orders.models import Order, OrderItem
+from core.constants import CASH_ON_DELIVERY, CREDIT_CARD
+from orders.services import place_new_order
+from payments.services import create_payment_intention
 from users.models import ShippingAddress, CreditCard
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -12,8 +15,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     shipping_address = serializers.PrimaryKeyRelatedField(queryset=ShippingAddress.objects.all())
-    credit_card = serializers.PrimaryKeyRelatedField(queryset=CreditCard.objects.all(), required=False,write_only=True)
     items = OrderItemSerializer(many=True, read_only=True)
+    payment_url = serializers.CharField(read_only=True, required=False)
 
     class Meta:
         model = Order
@@ -33,10 +36,8 @@ class OrderSerializer(serializers.ModelSerializer):
         self._validate_the_cart_is_not_empty()
         self._validate_shipping_address(attrs.get('shipping_address'))
         self._validate_payment_method(attrs.get('payment_method'))
-        if attrs.get('payment_method') == CREDIT_CARD:
-            self._validate_credit_card(attrs.get('credit_card'))
 
-        coupon_code = attrs.pop('coupon_code')
+        coupon_code = attrs.pop('coupon_code',None)
         if coupon_code:
             coupon = validate_coupon_code(coupon_code, self.context['request'].user)
             attrs['coupon'] = coupon
@@ -58,17 +59,8 @@ class OrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Invalid payment method")
         return payment_method
 
-    def _validate_credit_card(self, credit_card):
-        if not credit_card:
-            raise serializers.ValidationError("Credit card details are required")
-
-        # validate the credit card that its belongs to the user
-        customer = self.context['request'].user
-        if credit_card.user != customer:
-            raise serializers.ValidationError("This credit card does not belong to you")
-
-        return credit_card
-
     def create(self, validated_data):
         new_order = place_new_order(**validated_data)
-        return new_order
+        order_dict = model_to_dict(new_order)  # Convert model instance to dictionary
+        res = create_payment_intention(new_order)
+        return {**order_dict, **res}

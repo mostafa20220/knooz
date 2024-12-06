@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.core.files.base import ContentFile
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 
 from carts.services import calc_cod_fee, get_cart_summary
 from core.constants import ADDED_VALUE_TAX_RATE
@@ -29,13 +30,15 @@ def calc_estimated_tax(order_total):
     return ADDED_VALUE_TAX_RATE * order_total
 
 
-def decrease_coupon_usage_count(coupon):
-    coupon.usage_count -= 1
+def increase_coupon_usage_count(coupon):
+    coupon.usage_count += 1
     coupon.save()
 
 def update_ordered_products_stock(cart_items):
     updated_products = []
     for cart_item in cart_items:
+        if cart_item.product_variant.stock < cart_item.quantity:
+            raise ValidationError(f"the requested quantity of {cart_item.product_variant.product.name} is not available")
         cart_item.product_variant.stock -= cart_item.quantity
         updated_products.append(cart_item.product_variant)
     ProductVariant.objects.bulk_update(updated_products, ['stock', 'updated_at'], 500)
@@ -44,7 +47,7 @@ def empty_customer_cart(customer):
     customer.cart.all().delete()
 
 @transaction.atomic()
-def place_new_order(customer,coupon,shipping_address,payment_method):
+def place_new_order(customer,shipping_address,payment_method,coupon=None):
     cart_items = customer.cart.all()
     items_value, shipping_fee = get_cart_summary(cart_items)
     discount_amount = calc_discount_amount(coupon, items_value) if coupon else Decimal('0.00')
@@ -54,7 +57,13 @@ def place_new_order(customer,coupon,shipping_address,payment_method):
     estimated_tax = calc_estimated_tax(order_total)
 
     if coupon:
-        decrease_coupon_usage_count(coupon)
+        increase_coupon_usage_count(coupon)
+
+    # TODO: set the order_status based on the payment method,
+    #   if the payment method is cash on delivery then the order_status should be placed
+    #   if the payment method is credit card then the order_status should be pending
+    # TODO: ask gpt about:
+    #  updating order_status if it's credit card payment to cancel the order if the payment is not completed within 15 minute
 
     # create the order
     order = Order.objects.create(
@@ -73,6 +82,7 @@ def place_new_order(customer,coupon,shipping_address,payment_method):
     # create the order items
     order_items = [OrderItem(
         order=order,
+        variant=item.product_variant,
         name=item.product_variant.product.name,
         description=item.product_variant.product.description,
         seller=item.product_variant.product.seller,
@@ -91,7 +101,6 @@ def place_new_order(customer,coupon,shipping_address,payment_method):
         image=copy_img(item.product_variant.images.first().image) if item.product_variant.images.first() else None
     ) for item in cart_items]
 
-    print("order_items:", order_items)
     OrderItem.objects.bulk_create(order_items, batch_size=500)
 
     update_ordered_products_stock(cart_items)

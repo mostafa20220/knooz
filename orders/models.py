@@ -26,7 +26,7 @@ ORDER_STATUS_CHOICES = [
 ]
 
 class Order(BaseTimeStamp):
-    customer = models.ForeignKey('users.User', on_delete=models.CASCADE,related_name='orders')
+    customer = models.ForeignKey('users.User', on_delete=models.PROTECT,related_name='orders')
     shipping_address = models.TextField() # take a snapshot of the shipping address at the time of the order
     payment_method = models.CharField(choices=PAYMENT_METHOD_CHOICES, max_length=20, default=CASH_ON_DELIVERY)
     order_status= models.CharField(choices=ORDER_STATUS_CHOICES, default=PENDING, max_length=20)
@@ -41,13 +41,14 @@ class Order(BaseTimeStamp):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey('orders.Order', on_delete=models.CASCADE,related_name='items')
+    order = models.ForeignKey('orders.Order', on_delete=models.PROTECT,related_name='items')
 
     product_uuid = models.CharField(max_length=50) # product unique id
+    variant = models.ForeignKey('products.ProductVariant', on_delete=models.PROTECT, related_name='order_items')
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
-    seller = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='ordered_products') # I am not sure
+    seller = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name='ordered_products') # I am not sure
     category = models.CharField(max_length=50)
     brand = models.CharField(max_length=50)
     size = models.CharField(max_length=10, blank=True, null=True)
