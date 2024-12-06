@@ -14,6 +14,7 @@ urlpatterns = [
   path('shipping-addresses/', include('users.urls')),
   path('reviews/', include('reviews.urls')),
   path('apply-coupon/',include('coupons.urls')),
+  path('payments/', include('payments.urls')),
 ]
 
 urlpatterns += [path('i18n/', include('django.conf.urls.i18n')),]
