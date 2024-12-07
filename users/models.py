@@ -87,14 +87,6 @@ class User(AbstractUser):
         return ' '.join(result)
 
 
-class CreditCard(BaseTimeStamp):
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='credit_cards')
-    card_number = models.CharField(max_length=16)
-    card_holder_name = models.CharField(max_length=50)
-    expiration_date = models.TextField(max_length=5) # 03/26
-    is_default = models.BooleanField(default=False)
-
-
 class ShippingAddress(BaseTimeStamp):
     user = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name='shipping_addresses')
 
