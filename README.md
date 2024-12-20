@@ -152,6 +152,7 @@ This README provides an overview of the project, its features, and the technical
 6. **Access the Application**:
 
    - Web App: [http://localhost:8080](http://localhost:8080)
+   - Pg Admin: [http://localhost:5434](http://localhost:5434)
    - Admin Dashboard: [http://localhost:8080/admin](http://localhost:8080/admin)
    - Silk Dashboard: [http://localhost:8080/silk](http://localhost:8080/silk)
 
