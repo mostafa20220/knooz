@@ -1,9 +1,11 @@
 
 __pycache__/
 venv
+.venv
 db.sqlite3
 *.drawio
 .env
 .idea/
 static/
 media/
+certs/
