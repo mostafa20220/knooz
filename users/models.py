@@ -61,10 +61,10 @@ class User(AbstractUser):
 
     objects = UserManger()
 
-    first_name = models.CharField(max_length=50, blank=True, null=True)
-    last_name = models.CharField(max_length=50, blank=True, null=True)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
-    user_type = models.CharField(max_length=10, blank=True ,choices=USER_TYPE_CHOICES, default=CUSTOMER)
+    user_type = models.CharField(max_length=10 ,choices=USER_TYPE_CHOICES, default=CUSTOMER)
     phone = PhoneNumberField(_("Phone Number"), blank=True, null=True)
     image = models.ImageField(upload_to='profile/', blank=True, null=True)
 

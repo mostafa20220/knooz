@@ -1,0 +1,13 @@
+2024-12-27 17:17:29,645 - error_logger - ERROR - Error while creating payment intention: 'str' object has no attribute 'apartment_number'
+2024-12-27 17:17:36,733 - error_logger - ERROR - Error while creating payment intention: 'str' object has no attribute 'apartment_number'
+2024-12-29 01:54:06,388 - error_logger - ERROR - Can't cancel the order with payment method credit card and order status placed and paymob_transaction_id None, order id: 202
+2024-12-29 02:01:51,409 - error_logger - ERROR - Can't cancel the order with payment method credit card and order status placed and paymob_transaction_id None, order id: 202
+2024-12-29 02:29:40,529 - error_logger - ERROR - Can't cancel the order with payment method credit card and order status placed and paymob_transaction_id None, order id: 202
+2025-01-01 20:57:39,212 - error_logger - ERROR - Failed to send SMS: {'code': '1901', 'SMSID': '186611702', 'cost': '1'}
+2025-01-01 20:57:39,228 - error_logger - ERROR - Failed to send OTP: {'Code': '4901', 'SMSID': '186586284', 'Cost': '1'}
+2025-01-01 21:00:00,774 - error_logger - ERROR - Failed to send SMS: {'code': '1901', 'SMSID': '186611703', 'cost': '1'}
+2025-01-01 21:00:00,774 - error_logger - ERROR - Failed to send OTP: {'Code': '4901', 'SMSID': '186586285', 'Cost': '1'}
+2025-01-01 21:02:13,077 - error_logger - ERROR - Failed to send OTP: {'Code': '4901', 'SMSID': '186586286', 'Cost': '1'}
+2025-01-01 21:10:25,654 - error_logger - ERROR - Failed to send OTP: {'Code': '4901', 'SMSID': '186586287', 'Cost': '1'}
+2025-01-01 21:12:36,609 - error_logger - ERROR - Failed to send OTP: {'Code': '4901', 'SMSID': '186586288', 'Cost': '1'}
+2025-01-01 21:15:51,588 - error_logger - ERROR - Failed to send OTP: {'Code': '4901', 'SMSID': '186586289', 'Cost': '1'}

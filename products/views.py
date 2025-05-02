@@ -1,12 +1,11 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from oauthlib.uri_validate import query
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, ListAPIView
 
+from core.permissions import ReadOnly, IsSeller
+from products.filters import ProductFilter
 from products.models import VariantSize, VariantColor, Category, Brand
 from products.serializers import ListProductSerializer, CreateProductSerializer, DetailProductSerializer, \
     VariantSizeSerializer, VariantColorSerializer, CategorySerializer, BrandSerializer
-from core.permissions import ReadOnly, IsSeller
-from products.filters import ProductFilter
 from products.services import get_product_queryset, get_seller_products_queryset
 
 

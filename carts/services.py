@@ -23,6 +23,10 @@ def get_cart_items_value(cart_items):
 
 
 def get_cart_summary(cart_items):
+    # Return early if the cart is empty
+    if not cart_items:
+        return Decimal('0.00'), Decimal('0.00')
+
     # Annotate intermediate values
     cart_summary = cart_items.aggregate(
        items_value=Sum(F('product_variant__price') * F('quantity')),
@@ -33,7 +37,7 @@ def get_cart_summary(cart_items):
         )),
     )
 
-    items_value = cart_summary.get('items_value', Decimal('0.00'))
+    items_value = cart_summary.get('items_value') or Decimal('0.00')
 
     # Derive the shipping fee based on conditions
     shipping_fee = (

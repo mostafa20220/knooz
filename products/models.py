@@ -1,8 +1,7 @@
 # from encodings.base64_codec import base64_decode
-from enum import unique
 from uuid import uuid4
 
-from django.db import models, transaction
+from django.db import models
 
 from core.models import BaseTimeStamp
 from users.models import User

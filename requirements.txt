@@ -34,3 +34,7 @@ social-auth-app-django==5.4.2
 social-auth-core==4.5.4
 sqlparse==0.5.1
 urllib3==2.2.3
+celery~=5.4.0
+django-celery-beat~=2.7.0
+redis==5.2.1
+ngrok==1.4.0

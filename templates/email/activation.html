@@ -1,0 +1,10 @@
+Hello {{ user.get_full_name }},
+
+Thank you for registering. Please click the link below to activate your account:
+
+{{ protocol }}://{{ domain }}/auth/users/activation/?uid={{ uid }}&token={{ token }}
+
+If you did not register, please ignore this email.
+
+Best regards,
+Knooz Team

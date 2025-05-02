@@ -4,6 +4,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from users.models import User, ShippingAddress
+from utils.emails import send_email_async
 
 
 class ShippingAddressSerializer(serializers.ModelSerializer):
@@ -37,4 +38,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
+        send_email_async(
+            subject='Welcome to knooz!',
+            message=f'Welcome {user.first_name} to knooz, we are glad to have you with us!',
+            recipient_list=[user.email],
+        )
         return user

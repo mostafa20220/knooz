@@ -4,13 +4,14 @@ from core.models import BaseTimeStamp
 from products.models import ProductVariant
 from users.models import User
 
-# payment method choices
-
 # order status choices
-PENDING = 'pending'
+PENDING = 'pending'  # Order is not placed yet
+PAYMENT_FAILED = 'payment failed' # Order is not placed due to a payment failure
 CANCELLED = 'cancelled'  # Order is cancelled by the user (only if the order is not shipped = either pending or placed)
+REFUND_FAILED = 'refund failed'  # Order is not refunded due to a transaction failure
+SYSTEM_CANCELLED = 'system cancelled'  # Order is cancelled by the system (due to a transaction failure or payment failure or any other reason)
 PLACED = 'placed' # Order is placed by the user (after payment step is completed)
-SHIPPED = 'shipped'
+SHIPPED = 'shipped' # Order is shipped to the user
 DELIVERED = 'delivered' # Order is delivered to the user (if the payment method is COD, then we assume the payment is completed)
 RETURNED = 'returned' # Order is returned by the user (only could happen after being delivered)
 REFUNDED = 'refunded' # Order is refunded to the user (only could happen after being delivered)
@@ -18,16 +19,21 @@ REFUNDED = 'refunded' # Order is refunded to the user (only could happen after b
 ORDER_STATUS_CHOICES = [
     (PENDING, 'Pending'),
     (PLACED, 'Placed'),
+    (PAYMENT_FAILED, 'Payment Failed'),
+    (REFUND_FAILED, 'Transaction Failed'),
+    (SYSTEM_CANCELLED, 'System Cancelled'),
     (CANCELLED, 'Cancelled'),
     (SHIPPED, 'Shipped'),
     (DELIVERED, 'Delivered'),
     (RETURNED, 'Returned'),
-    (REFUNDED, 'Refunded')
+    (REFUNDED, 'Refunded'),
 ]
 
 class Order(BaseTimeStamp):
     customer = models.ForeignKey('users.User', on_delete=models.PROTECT,related_name='orders')
-    shipping_address = models.TextField() # take a snapshot of the shipping address at the time of the order
+    paymob_transaction_id = models.CharField(max_length=255, blank=True, null=True)
+    shipping_address = models.ForeignKey('users.ShippingAddress', on_delete=models.PROTECT, related_name='orders')
+    shipping_address_snapshot = models.TextField() # take a snapshot of the shipping address at the time of the order
     payment_method = models.CharField(choices=PAYMENT_METHOD_CHOICES, max_length=20, default=CASH_ON_DELIVERY)
     order_status= models.CharField(choices=ORDER_STATUS_CHOICES, default=PENDING, max_length=20)
 
@@ -41,7 +47,7 @@ class Order(BaseTimeStamp):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey('orders.Order', on_delete=models.PROTECT,related_name='items')
+    order = models.ForeignKey('orders.Order', on_delete=models.PROTECT, related_name='items')
 
     product_uuid = models.CharField(max_length=50) # product unique id
     variant = models.ForeignKey('products.ProductVariant', on_delete=models.PROTECT, related_name='order_items')

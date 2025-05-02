@@ -2,11 +2,10 @@ from django.forms import model_to_dict
 from rest_framework import serializers
 
 from coupons.serializers import validate_coupon_code
-from orders.models import Order, OrderItem
+from orders.models import Order, OrderItem, PENDING, PLACED
 from core.constants import CASH_ON_DELIVERY, CREDIT_CARD
-from orders.services import place_new_order
-from payments.services import create_payment_intention
-from users.models import ShippingAddress, CreditCard
+from orders.services import place_new_order, create_payment_intention, cancel_order
+from users.models import ShippingAddress
 
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,10 +25,11 @@ class OrderSerializer(serializers.ModelSerializer):
             'items_value': {'read_only': True},
             'shipping_fee': {'read_only': True},
             'cod_fee': {'read_only': True},
-            'discount_amount': {'read_only': True},
-            'order_total': {'read_only': True},
-            'estimated_tax': {'read_only': True},
             'coupon_code': {'required': False},
+            'discount_amount': {'read_only': True},
+            'estimated_tax': {'read_only': True},
+            'order_total': {'read_only': True},
+            'shipping_address_snapshot': {'read_only': True},
         }
 
     def validate(self, attrs):
@@ -61,6 +61,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         new_order = place_new_order(**validated_data)
-        order_dict = model_to_dict(new_order)  # Convert model instance to dictionary
-        res = create_payment_intention(new_order)
-        return {**order_dict, **res}
+        return new_order
+
+

@@ -1,5 +1,8 @@
+import os
 from datetime import timedelta
 from pathlib import Path
+
+from celery.schedules import crontab
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -16,6 +19,48 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="*", cast=lambda v: [s.strip() f
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="*", cast=lambda v: [s.strip() for s in v.split(",")])
+
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = config("EMAIL_HOST")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+
+# SMS settings
+SMSMISR_USERNAME = config("SMSMISR_USERNAME")
+SMSMISR_PASSWORD = config("SMSMISR_PASSWORD")
+SMSMISR_SENDER_TOKEN = config("SMSMISR_SENDER_TOKEN")
+SMSMISR_ENVIRONMENT = config("SMSMISR_ENVIRONMENT")
+SMSMISR_LANGUAGE = config("SMSMISR_LANGUAGE")
+SMSMISR_OTP_TEMPLATE_TOKEN = config("SMSMISR_OTP_TEMPLATE_TOKEN")
+SMSMISR_SUCCESS_SMS_CODE = config("SMSMISR_SUCCESS_SMS_CODE")
+SMSMISR_SUCCESS_OTP_CODE = config("SMSMISR_SUCCESS_OTP_CODE")
+
+# Paymob Settings
+PAYMOB_API_KEY = config("PAYMOB_API_KEY")
+PAYMOB_SECRET_KEY = config("PAYMOB_SECRET_KEY")
+PAYMOB_PUBLIC_KEY = config("PAYMOB_PUBLIC_KEY")
+PAYMOB_PAYMENT_METHODS_IDS = config("PAYMOB_PAYMENT_METHODS_IDS", cast=lambda v: [int(x) for x in v.split(",")])
+PAYMOB_HMAC_SECRET = config("PAYMOB_HMAC_SECRET")
+
+
+# celery and redis settings
+CELERY_BROKER_URL = config("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND")
+CELERY_ACCEPT_CONTENT = config("CELERY_ACCEPT_CONTENT", default=['json'], cast=lambda v: [s.strip() for s in v.split(",")])
+CELERY_TASK_SERIALIZER = config("CELERY_TASK_SERIALIZER", default='json')
+
+
+CELERY_BEAT_SCHEDULE = {
+    "handle_unplaced_orders": {
+        "task": "orders.tasks.handle_unplaced_orders",
+        "schedule": crontab(minute="*/1"),
+    },
+}
 
 
 # Application definition
@@ -38,7 +83,8 @@ INSTALLED_APPS = [
     'carts',
     'coupons',
     'wishlists',
-    'reviews'
+    'reviews',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -58,7 +104,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -85,6 +131,21 @@ DATABASES = {
         "PASSWORD": config("SQL_PASSWORD", default="postgresql"),
         "HOST": config("SQL_HOST", default="localhost"),
         "PORT": config("SQL_PORT", default="5432"),
+        "CONN_MAX_AGE":config("CONN_MAX_AGE", default=60, cast=int),
+        'OPTIONS': {
+            'keepalives': 1,
+            'keepalives_idle': 60,
+            'keepalives_interval': 10,
+            'keepalives_count': 5,
+            'connect_timeout': 10,
+        },
+        'POOL': {
+            'max_overflow': 20,
+            'pool_size': 30,
+            'recycle': config("CONN_MAX_AGE", default=60,cast=int),             # Align with CONN_MAX_AGE
+            'pre_ping': True,
+            'timeout': 30,
+        }
     },
 }
 
@@ -112,13 +173,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
-
 LANGUAGES=[
     ('en', 'English'),
     ('ar', 'Arabic'),
@@ -136,50 +193,98 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 AUTH_USER_MODEL = 'users.User'
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'PAGE_SIZE': 10,  # Adjust the page size as needed
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-
+    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomCursorPagination',
 }
 
 SIMPLE_JWT = {
    'AUTH_HEADER_TYPES': 'JWT',
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=config("JWT_ACCESS_EXPIRES_IN_MINUTES", default=5, cast=int)),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=config("JWT_REFRESH_EXPIRES_IN_DAYS", default=1, cast=int)),
-
 }
 
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'handlers': {
-#         'console': {
-#             'level': 'DEBUG',
-#             'class': 'logging.StreamHandler',
-#         },
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['console'],
-#             'level': 'DEBUG',
-#         },
-#         'django.request': {
-#             'handlers': ['console'],
-#             'level': 'DEBUG',
-#         },
-#         'djoser': {
-#             'handlers': ['console'],
-#             'level': 'DEBUG',
-#         },
-#     },
-# }
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        },
+        'simple': {
+            'format': '%(levelname)s - %(message)s'
+        },
+    },
+    'handlers': {
+        'django-file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
+            'formatter': 'verbose',
+        },
+        'debug-file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'debug.log'),
+            'formatter': 'verbose',
+        },
+        'info-file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'info.log'),
+            'formatter': 'verbose',
+        },
+        'warning-file': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'warning.log'),
+            'formatter': 'verbose',
+        },
+        'error-file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'error.log'),
+            'formatter': 'verbose',
+        },
+    },
+    'loggers':{
+            'django_logger': {
+            'handlers': ['django-file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'debug_logger': {
+            'handlers': ['debug-file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'info_logger': {
+            'handlers': ['info-file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'error_logger': {
+            'handlers': ['error-file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'warning_logger': {
+            'handlers': ['warning-file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
 
+    },
+}
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = config("SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE", default=["email", "profile"], cast=lambda v: [s.strip() for s in v.split(",")])
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = config("SOCIAL_AUTH_GOOGLE_OAUTH2_KEY")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = config("SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET")
 
 DJOSER = {
     'USER_CREATE_PASSWORD_RETYPE': False,
@@ -188,8 +293,18 @@ DJOSER = {
     'USERNAME_CHANGED_EMAIL_CONFIRMATION': False,
     'PASSWORD_CHANGED_EMAIL_CONFIRMATION': False,
     'SEND_CONFIRMATION_EMAIL': False,
-    # 'ACTIVATION_URL': 'activate/{uid}/{token}',
     'SEND_ACTIVATION_EMAIL': False,
+    'ACTIVATION_URL': 'activate/{uid}/{token}',
+    # "ACTIVATION_URL": "auth/users/activation/",
+    # "EMAIL": {
+    #     "activation": "email/activation.html",
+    # },
+    "EMAIL": {
+        "activation": "core.email.ActivationEmail",  # Default Djoser email class
+        "password_reset": "core.email.PasswordResetEmail",
+        "username_changed_confirmation": "core.email.UsernameChangedConfirmationEmail",
+        "password_changed_confirmation": "core.email.PasswordChangedConfirmationEmail",
+    },
     'SERIALIZERS': {
         'user_create': 'users.serializers.UserSerializer',
         'user': 'users.serializers.UserSerializer',

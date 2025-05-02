@@ -46,7 +46,7 @@ class ProductReviewsViewSet(viewsets.ModelViewSet):
         return self.queryset.select_related('customer')
 
     @action(detail=True, methods=['post'], permission_classes=[IsCustomer])
-    def like(self, request, pk=None):
+    def like(self, request):
         review = self.get_object()
         customer = request.user
 
@@ -58,7 +58,7 @@ class ProductReviewsViewSet(viewsets.ModelViewSet):
         return Response({"detail": "Review liked successfully."}, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], permission_classes=[IsCustomer])
-    def unlike(self, request, pk=None):
+    def unlike(self, request):
         review = self.get_object()
         customer = request.user
 

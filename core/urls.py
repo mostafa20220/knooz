@@ -2,6 +2,8 @@ from django.conf.urls.i18n import i18n_patterns
 from django.contrib import admin
 from django.urls import path, include
 
+from users.views import TestSMSView
+
 urlpatterns = [
   path('auth/', include('djoser.urls')),
   path('auth/', include('djoser.urls.jwt')),
@@ -14,7 +16,8 @@ urlpatterns = [
   path('shipping-addresses/', include('users.urls')),
   path('reviews/', include('reviews.urls')),
   path('apply-coupon/',include('coupons.urls')),
-  path('payments/', include('payments.urls')),
+
+  path('test-sms/', TestSMSView.as_view(), name='test-sms'),
 ]
 
 urlpatterns += [path('i18n/', include('django.conf.urls.i18n')),]
